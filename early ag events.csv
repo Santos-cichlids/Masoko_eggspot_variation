@@ -1,0 +1,28 @@
+﻿Individual,Pheno,Geno,Sex,Clutch,Start  date,Event ,Date,Day
+Da3_3,albino,homozygous,M,D,31/03/2023,iridophores 4-5,12/04/2023,12
+Da4_4,albino,homozygous,M,D,31/03/2023,iridophores 4-5,12/04/2023,12
+Da5_5,albino,homozygous,F,D,31/03/2023,iridophores 4-5,04/04/2023,4
+Ds1_6,sibling,wt,M,D,31/03/2023,iridophores 4-5,17/04/2023,17
+Ds3_8,sibling,wt,M,D,31/03/2023,iridophores 4-5,04/04/2023,4
+Ds4_9,sibling,wt,M,D,31/03/2023,iridophores 4-5,04/04/2023,4
+Ds5_10,sibling,wt,M,D,31/03/2023,iridophores 4-5,12/04/2023,12
+Ds10_15,sibling,unclear,M,D,31/03/2023,iridophores 4-5,12/04/2023,12
+Ds12_17,sibling,wt,M,D,31/03/2023,iridophores 4-5,07/04/2023,7
+Da3_3,albino,homozygous,M,D,31/03/2023,overlaying 3-5,02/05/2023,32
+Da4_4,albino,homozygous,M,D,31/03/2023,overlaying 3-5,27/04/2023,27
+Da5_5,albino,homozygous,F,D,31/03/2023,overlaying 3-5,22/04/2023,22
+Ds1_6,sibling,wt,M,D,31/03/2023,overlaying 3-5,22/04/2023,22
+Ds3_8,sibling,wt,M,D,31/03/2023,overlaying 3-5,17/04/2023,17
+Ds4_9,sibling,wt,M,D,31/03/2023,overlaying 3-5,22/04/2023,22
+Ds5_10,sibling,wt,M,D,31/03/2023,overlaying 3-5,27/04/2023,27
+Ds10_15,sibling,unclear,M,D,31/03/2023,overlaying 3-5,22/04/2023,22
+Ds12_17,sibling,wt,M,D,31/03/2023,overlaying 3-5,17/04/2023,17
+Da3_3,albino,homozygous,M,D,31/03/2023,stellate associations 3-5,05/06/2023,66
+Da4_4,albino,homozygous,M,D,31/03/2023,stellate associations 3-5,17/05/2023,47
+Da5_5,albino,homozygous,F,D,31/03/2023,stellate associations 3-5,29/05/2023,59
+Ds1_6,sibling,wt,M,D,31/03/2023,stellate associations 3-5,02/05/2023,32
+Ds3_8,sibling,wt,M,D,31/03/2023,stellate associations 3-5,17/04/2023,17
+Ds4_9,sibling,wt,M,D,31/03/2023,stellate associations 3-5,27/04/2023,27
+Ds5_10,sibling,wt,M,D,31/03/2023,stellate associations 3-5,27/04/2023,27
+Ds10_15,sibling,unclear,M,D,31/03/2023,stellate associations 3-5,27/04/2023,27
+Ds12_17,sibling,wt,M,D,31/03/2023,stellate associations 3-5,17/04/2023,17
