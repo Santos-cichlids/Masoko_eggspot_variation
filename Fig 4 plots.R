@@ -62,25 +62,44 @@ irid_cov_SL <- irid_cov_SL[!is.na(irid_cov_SL$Clutch), ]
 
 ### iridophore coverage plot -------------------------------
 
-ggplot(irid_cov_SL, mapping = aes(x= Dpf_estimated.x, y=Percent_area, 
-                                               group_by = Individual.x, 
-                                             colour = Pheno.x, shape = Clutch))+
-  #add data points
-  geom_point(size=3, alpha=0.6)+
+mapping = aes(x=Pheno, y=Ag_length,
+              colour = Pheno, fill =Pheno,
+              shape=Clutch))+
+
+ggplot(irid_cov_SL, mapping = aes(x = Pheno.x, y=Percent_area, 
+                                  colour = Pheno.x, shape = Clutch))+
+  #violin
+  geom_violin(alpha=violinalpha, width = violinwidth, trim=F, scale = "area", 
+              mapping=aes(group=Pheno.x, fill=Pheno.x,))+
+  #boxplot
+  geom_boxplot(
+    aes(fill = Pheno.x, group=Pheno.x),
+    width = boxwidth,
+    alpha = boxalpha,
+    outlier.shape = NA,
+    color = "black",
+    linewidth = linesize)+
+  #data points jittered by quasirandom
+  geom_quasirandom(method = 'quasirandom',alpha = jitteralpha, width = 0.1,size=3,stroke=0.5)+
   #custom scales
   scale_colour_manual(values = c(albino, sibling))+
-  scale_shape_manual(values=fiveshapes)+
+  scale_fill_manual(values = c(albino, sibling))+
+  scale_shape_manual(values=c(fiveshapes))+
   #labels and theme
   ylab("Percentage of cropped flank area above value threshold")+
-  xlab("dpf")+
-  xlim(10, 25)+
+  ylim(0,11.9)+
   theme_classic(base_size = 16)+
   theme
 
 #save high res
-ggsave(filename="irid coverage clutch by dpf vertical .pdf", path="irid_plots", width=2.7, height=4)
+ggsave(filename="irid coverage violin vertical .pdf", path="irid_plots", width=2.7, height=4)
 
 
+#iridophore coverage test with ANOVA
+res.aov2.cov <- aov(Percent_area ~ Pheno.x * Clutch, data = irid_cov_SL)
+anova(res.aov2.cov)
+aov2_cov <- anova(res.aov2.cov)
+write.csv(aov2_cov, "aov2_irid_cov.csv")
 
 ## early aggregation timing data--------------
 
@@ -210,7 +229,7 @@ early_first$nArea <- (early_first$Area)/(early_first$Standard_length_mm)
 early_first$nAg_length <- (early_first$Ag_length)/(early_first$Standard_length_mm)
 early_first$nArea_relative <- (early_first$Area_relative)/(early_first$Standard_length_mm)
 
-#early aggregations size plots--------
+###early aggregations size plots--------
 
 
 #check SL not sig diff
@@ -256,7 +275,7 @@ aov3_earlyag_SL
  #save
 ggsave(filename="early ag length with box.pdf", path="early_ag_plots", width=5.25, height=5)
 
-##early aggregation length stats ------------
+##early aggregation length stats
 #test normality
 ggdensity(early_first$Ag_length)
 ggqqplot(early_first$Ag_length)
@@ -346,7 +365,16 @@ ggplot(SL_late_spotsM, mapping = aes(x=number, y=Pheno,
 #save
 ggsave(filename="d200 M with box.pdf", path="spot_plots", width=5.25, height=5)
 
+##spot number stats
 
+#number
+ggdensity(SL_late_spotsM$number)
+ggqqplot(SL_late_spotsM$number)
+shapiro.test(SL_late_spotsM$number)
+#not normal
+
+KW_number_day200_M_ph <- kruskal.test(number ~ Pheno, data = SL_late_spotsM) 
+KW_number_day200_M_ph
 
 ###proximal edge measurements data-------------------------
 
@@ -377,6 +405,7 @@ prox <- subset(prox_all, Day < 170)
 
 #plot measurments of the distances between the proximal 
 #edge of the fin and the proximal edge of the first aggregation
+#at final imgaing timepoint
 
 ggplot(prox_200, mapping = aes(x=Pheno, y=Prox_edge,
                                colour = Pheno, fill = Pheno))+
@@ -411,5 +440,8 @@ geom_signif(comparisons = list(c("albino", "sibling")),
 #save
 ggsave(filename="200_prox_edge with box.pdf", path="prox_plots", width=5.25, height=5)
 
-
+res.aov2.edge200 <- aov(Prox_edge ~ Pheno * Clutch, data = prox_200)
+aov2_edge200 <- anova(res.aov2.edge200)
+aov2_edge200
+write.csv(aov2_edge200, "aov2_prox_edge_200.csv")
 

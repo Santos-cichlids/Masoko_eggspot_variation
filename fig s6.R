@@ -1,6 +1,8 @@
 library(tidyverse)
 library (ggbeeswarm)
 library(ggpubr)
+library (rstatix)
+
 
 ####settings ----------
 
@@ -15,6 +17,9 @@ theme <- theme(
 #colours for plots
 sibling <- "#528F77"
 albino <- "#FFB701"
+
+UTR <- "#534C75"
+WT <- "#45778F" 
 
 
 #for size and appearance of plot geoms
@@ -44,6 +49,8 @@ SL_import$Date <- dmy(SL_import$Date)
 #create unique identifiers for each row matching between datasets
 SL_import$Indiv_date <- paste(SL_import$Individual, SL_import$Date, sep="_")
 
+
+
 ###iridophore coverage data -------
 #import iridophore coverage meaurements
 irid_cov <- read_csv("Iridophore coverage 2024 .csv")
@@ -66,7 +73,7 @@ ggplot(irid_cov_SL, mapping = aes(x= Dpf_estimated.x, y=Percent_area,
                                   group_by = Individual.x, 
                                   colour = Pheno.x, shape = Clutch))+
   #add data points
-  geom_point(size=3, alpha=0.6)+
+  geom_point(size=5, alpha=0.6)+
   #custom scales
   scale_colour_manual(values = c(albino, sibling))+
   scale_shape_manual(values=fiveshapes)+
@@ -78,7 +85,8 @@ ggplot(irid_cov_SL, mapping = aes(x= Dpf_estimated.x, y=Percent_area,
   theme
 
 #save high res
-ggsave(filename="irid coverage clutch by dpf vertical .pdf", path="irid_plots", width=2.7, height=4)
+ggsave(filename="irid coverage clutch by dpf sq .pdf", path="irid_plots",  width=5.25, height=5)
+#alternative: narrow vertical dims width=2.7, height=4 (default unit on my laptop is inches)
 
 
 
@@ -316,6 +324,16 @@ ggplot(SL_late_spotsM, mapping = aes(x=nNumber, y=Pheno,
 ggsave(filename="200_nspotsM with box.pdf", path="spot_plots", width=5.25, height=5)
 
 
+##spot number stats
+ggdensity(SL_late_spotsM$nNumber)
+ggqqplot(SL_late_spotsM$nNumber)
+shapiro.test(SL_late_spotsM$nNumber)
+#not normal
+
+KW_nNumber_day200_M_ph <- kruskal.test(nNumber ~ Pheno, data = SL_late_spotsM) 
+KW_nNumber_day200_M_ph
+
+
 ###aggregations through development data ----------
 
 SL_ags <- subset (SL,
@@ -352,6 +370,24 @@ ggplot(SL_ags, mapping = aes(x=number, y=Day,
 
 ggsave(filename="notnorm_spotsM_sq for supp.pdf", path="spot_plots", width=4.14, height=1.67)
 
+#stats ags
+SL_ags_50son <- subset (SL_ags, 
+                 Grouped_day == "c_50s" |
+                Grouped_day == "d_near80" |
+                 Grouped_day == "e_90s" |
+                Grouped_day == "f_110s" |
+                Grouped_day == "g_120s" |
+                Grouped_day == "h_end" |
+                Grouped_day == "i_photos")
+
+res.aov.ags.50son <- anova_test(
+  data = SL_ags_50son, dv = number, wid = Individual,
+  within = Grouped_day, between = c(Pheno, Clutch))
+get_anova_table(res.aov.ags.50son)
+
+ags_III_table50son <- get_anova_table(res.aov.ags.50son)
+write.csv(ags_III_table50son, "aovIIIags50son.csv")
+
 
 ggplot(SL_import, mapping = aes(x=Pre_ags_only, y=Day,
                              colour = Pheno, fill =Pheno))+
@@ -377,6 +413,25 @@ ggplot(SL_import, mapping = aes(x=Pre_ags_only, y=Day,
 
 ggsave(filename="irids_only_sq for supp.pdf", path="spot_plots", width=4.14, height=1.67)
 
+
+#stats irids
+
+SL_irids <- subset (SL_import, 
+                        Grouped_day == "c_50s" |
+                          Grouped_day == "d_near80" |
+                          Grouped_day == "e_90s" |
+                          Grouped_day == "f_110s" |
+                          Grouped_day == "g_120s" |
+                          Grouped_day == "h_end" |
+                          Grouped_day == "i_photos")
+
+res.aov.preagsonly <- anova_test(
+  data = SL_import, dv = Pre_ags_only, wid = Individual,
+  within = Grouped_day, between = c(Pheno, Clutch))
+get_anova_table(res.aov.preagsonly)
+
+ags_III_tablepreagsonly <- get_anova_table(res.aov.preagsonly)
+write.csv(ags_III_tablepreagsonly, "aovIIIpreagsonly.csv")
 
 
 ###proximal edge measurements data-------------------------
@@ -406,41 +461,9 @@ prox <- subset(prox_all, Day < 170)
 
 ### proximal measurements plots ------------
 
-#plot measurments of the distances between the proximal 
+#plot measurements of the distances between the proximal 
 #edge of the fin and the proximal edge of the first aggregation
-
-ggplot(prox_200, mapping = aes(x=Pheno, y=Prox_edge,
-                               colour = Pheno, fill = Pheno))+
-  #violin
-  geom_violin(alpha=violinalpha, width=violinwidth, trim=FALSE, scale = scale)+
-  #boxplot
-  geom_boxplot(
-    aes(fill = Pheno, group=Pheno),
-    width = boxwidth,
-    alpha = boxalpha,
-    outlier.shape = NA,
-    color = "black",
-    linewidth = linesize)+
-  #data points
-  geom_point(size=pointsize, alpha=jitteralpha, mapping = aes ( shape = Clutch))+
-  #custom scales
-  scale_colour_manual(values = c(albino, sibling))+
-  scale_fill_manual(values = c(albino, sibling))+
-  #labels and themes
-  ylab("Distance (mm)")+
-  ylim(5,-0.1)+
-  scale_shape_manual(values = c(fourshapes))+
-  theme+
-  theme_classic(base_size = 16)+
-  theme(legend.position="none",
-        axis.title.x = element_blank())+
-  #stats
-  geom_signif(comparisons = list(c("albino", "sibling")),   
-              map_signif_level=TRUE, colour="black", y_position=-0.1,
-              tip_length=0)+
-  
-  #save
-  ggsave(filename="200_prox_edge with box.pdf", path="prox_plots", width=5.25, height=5)
+#at mid-developoment size matched timepoints
 
 ggplot(prox, mapping = aes(x=Pheno, y=Prox_edge,
                                         colour = Pheno, fill = Pheno))+
@@ -453,7 +476,8 @@ ggplot(prox, mapping = aes(x=Pheno, y=Prox_edge,
     alpha = boxalpha,
     outlier.shape = NA,
     color = "black",
-    linewidth = linesize)+#data points
+    linewidth = linesize)+
+  #data points
   geom_point(size=pointsize, alpha=jitteralpha, mapping = aes ( shape = Clutch))+
   #custom scales
   scale_colour_manual(values = c(albino, sibling))+
@@ -474,5 +498,50 @@ ggplot(prox, mapping = aes(x=Pheno, y=Prox_edge,
 
 ggsave(filename="mid_prox_edge with box.pdf", path="prox_plots", width=5.25, height=5)
 
+res.aov2.edge <- aov(Prox_edge ~ Pheno * Clutch, data = prox)
+aov2_edge <- anova(res.aov2.edge)
+aov2_edge
+write.csv(aov2_edge, "aov2_prox_edge.csv")
+
+### utr data -------------------------
+
+#import measurements
+UTR_spots <- read_csv("UTR.csv")
+
+
+### UTR plot ------------------
+
+ggplot(UTR_spots, mapping = aes(x=Spots, y=Genotype,
+                                colour = Genotype, fill =Genotype))+
+  geom_violin(alpha=0.3, size=0.6, trim=FALSE, scale = "count")+
+  geom_boxplot(
+    aes(fill = Genotype, group=Genotype),
+    width = boxwidth,
+    alpha = boxalpha,
+    outlier.shape = NA,
+    color = "black",
+    linewidth = linesize)+
+  geom_point(size=2, alpha=jitteralpha*2)+
+  scale_colour_manual(values = c(UTR, WT))+
+  scale_fill_manual(values = c(UTR, WT))+
+  theme_classic(base_size = 16)+
+  theme+
+  theme(legend.position="none",
+        axis.title.x = element_blank())+
+  coord_flip()
+
+ggsave(filename="UTR_spots s6.pdf", path="spot_plots", width=5.25, height=5)
+
+
+#spots normalised
+ggdensity(UTR_spots$nSpots)
+ggqqplot(UTR_spots$nSpots)
+shapiro.test(UTR_spots$nSpots)
+#normal
+
+utrttest <-t_test(data = UTR_spots, formula = nSpots ~ Genotype, 
+                  comparisons = list(c("UTR", "WTmixed")))
+utrttest
+write.csv(utrttest, "UTR stats .csv")
 
 
