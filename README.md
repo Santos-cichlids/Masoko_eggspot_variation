@@ -175,6 +175,5 @@ bash Calc_Pi_Tajima.bash
 
 ### b. RNAseq from Aaron’s experiment  
 - Analyzed using: `Domain_Sex_deseq_Aaron.R`
-- Generating heatmap: `Heatmap_domain_sex.R`
 ## 4. 3'UTR and mi-RNA binding
 - Extracting 3'UTR from vcf...

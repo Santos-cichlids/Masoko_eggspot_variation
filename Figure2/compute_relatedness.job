@@ -1,0 +1,37 @@
+#!/bin/bash
+
+#! Name of the job:
+#SBATCH -J  File_conversion
+#! Which project should be charged:
+#SBATCH -A ESANTOS-SL3-CPU
+#SBATCH -p icelake
+#! How many whole nodes should be allocated?
+#SBATCH --nodes=1
+#! How many (MPI) tasks will there be in total? (<= nodes*76)
+#! The Ice Lake (icelake) nodes have 76 CPUs (cores) each and
+#! 3380 MiB of memory per CPU.
+#SBATCH --ntasks=8
+#! How much wallclock time will be required?
+#SBATCH --time=2:00:00
+#! What types of email messages do you wish to receive?
+#SBATCH --mail-type=NONE
+#! Uncomment this to prevent the job from being requeued (e.g. if
+#! interrupted by node failure or system downtime):
+##SBATCH --no-requeue
+workdir="$SLURM_SUBMIT_DIR"
+
+. /etc/profile.d/modules.sh                # Leave this line (enables the module command)
+module purge                               # Removes all modules still loaded
+module load rhel8/default-icl              # REQUIRED - loads the basic environment
+
+# Activate Conda
+source ~/miniconda3/bin/activate            # Replace this path with your Conda installation path if different
+conda activate GEMMA                       # Activate the GEMMA environment
+
+# Run GEMMA
+gemma -bfile Masoko_SUBSET_FILTERED_for_THEIS_pheno -gk 1 -o Masoko_SUBSET_FILTERED_for_THEIS_pheno
+
+# Optional: Deactivate Conda after the job
+conda deactivate
+
+date 

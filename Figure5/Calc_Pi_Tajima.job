@@ -1,0 +1,44 @@
+#!/bin/bash
+
+#! Name of the job:
+#SBATCH -J pi_snp
+#! Which project should be charged:
+#SBATCH -A ESANTOS-SL2-CPU
+#SBATCH -p icelake
+#! How many whole nodes should be allocated?
+#SBATCH --nodes=1
+#! How many (MPI) tasks will there be in total? (<= nodes*76)
+#! The Ice Lake (icelake) nodes have 76 CPUs (cores) each and
+#! 3380 MiB of memory per CPU.
+#SBATCH --ntasks=8
+#! How much wallclock time will be required?
+#SBATCH --time=3:00:00
+#! What types of email messages do you wish to receive?
+#SBATCH --mail-type=FAIL
+#! Uncomment this to prevent the job from being requeued (e.g. if
+#! interrupted by node failure or system downtime):
+##SBATCH --no-requeue
+workdir="$SLURM_SUBMIT_DIR"
+
+. /etc/profile.d/modules.sh                # Leave this line (enables the module command)
+module purge                               # Removes all modules still loaded
+module load rhel8/default-icl              # REQUIRED - loads the basic environment
+
+#calculate Pi
+vcftools --gzvcf Masoko_PASS_noOMB_ALL_WILD_mono_bi_GQ30_BENTH_LITT_MIDD.chr$1.vcf.gz --keep list_benthic.list --site-pi --out PER_SNP/BENTH_pi_chr$1
+
+vcftools --gzvcf Masoko_PASS_noOMB_ALL_WILD_mono_bi_GQ30_BENTH_LITT_MIDD.chr$1.vcf.gz --keep list_littoral.list --site-pi --out PER_SNP/LITTORAL_pi_chr$1
+
+vcftools --gzvcf Masoko_PASS_noOMB_ALL_WILD_mono_bi_GQ30_BENTH_LITT_MIDD.chr$1.vcf.gz --keep list_middle_lit_ben.list --site-pi --out PER_SNP/ALL_LITT_BEN_pi_chr$1
+
+#Calculate Tajima's D 1k window
+vcftools --gzvcf Masoko_PASS_noOMB_ALL_WILD_mono_bi_GQ30_BENTH_LITT_MIDD.chr$1.vcf.gz --keep list_benthic.list --TajimaD 1000 --out PER_SNP/BENTHIC_Tajima_chr$1
+
+vcftools --gzvcf Masoko_PASS_noOMB_ALL_WILD_mono_bi_GQ30_BENTH_LITT_MIDD.chr$1.vcf.gz --keep list_littoral.list --TajimaD 1000 --out PER_SNP/LITTORAL_Tajima_chr$1
+
+vcftools --gzvcf Masoko_PASS_noOMB_ALL_WILD_mono_bi_GQ30_BENTH_LITT_MIDD.chr$1.vcf.gz --keep list_middle_lit_ben.list --TajimaD 1000 --out PER_SNP/ALL_LIT_BEN_Tajima_chr$1
+
+
+
+date
+
