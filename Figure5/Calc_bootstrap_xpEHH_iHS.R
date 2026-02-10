@@ -11,13 +11,20 @@ if (length(args) == 0) {
 }
 chromosome <- args[1]
 
-# Create file paths using the chromosome variable - NOW WITH _AA SUFFIX
-benth_file <- paste0("Masoko_chr", chromosome, "_benthic_AA.vcf.gz")
-litt_file <- paste0("Masoko_chr", chromosome, "_littoral_AA.vcf.gz")
+# Create file paths using the chromosome variable
+benth_file <- paste0("Masoko_chr", chromosome, "_benthic.vcf.gz")
+litt_file <- paste0("Masoko_chr", chromosome, "_littoral.vcf.gz")
 
+# Check if input files exist
+if (!file.exists(benth_file)) {
+  stop(paste("File not found:", benth_file))
+}
+if (!file.exists(litt_file)) {
+  stop(paste("File not found:", litt_file))
+}
 
 # Create output directory if it doesn't exist
-output_dir <- "Downsampled_xpEHH_IHS_POLARIZED"
+output_dir <- "Downsampled_xpEHH_IHS"
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
@@ -34,19 +41,9 @@ for(boot_iter in 1:n_bootstrap) {
   # Set seed for reproducibility
   set.seed(boot_iter * 42)
   
-  # Load data fresh for each iteration with polarization
-
-  # Try loading with polarization, catch any errors
-  tryCatch({
-    Benth_hh <- data2haplohh(hap_file = benth_file, polarize_vcf = TRUE)
-    Litt_hh  <- data2haplohh(hap_file = litt_file, polarize_vcf = TRUE)
-    cat("Successfully loaded polarized data\n")
-  }, error = function(e) {
-    cat("ERROR in data2haplohh with polarize_vcf = TRUE:\n")
-    cat(conditionMessage(e), "\n")
-    cat("\nMake sure you've run add_AA_tag.sh to add ancestral allele info!\n")
-    stop("Polarization failed. Check VCF format.")
-  })
+  # Load data fresh for each iteration
+  Benth_hh <- data2haplohh(hap_file = benth_file, polarize_vcf = FALSE)
+  Litt_hh  <- data2haplohh(hap_file = litt_file, polarize_vcf = FALSE)
   
   # Get sample names
   benth_samples <- hap.names(Benth_hh)
@@ -56,21 +53,13 @@ for(boot_iter in 1:n_bootstrap) {
   litt_subset <- sample(litt_samples, n_target, replace = FALSE)
   Litt_hh <- subset(Litt_hh, select.hap = litt_subset)
   
-
   # Filter by MAF
   Benth_hh_f <- subset(Benth_hh, min_maf = 0.05)
   Litt_hh_f  <- subset(Litt_hh, min_maf = 0.05)
   
-  # Scan haplotypes with polarized = TRUE
-  tryCatch({
-    Benth_scan <- scan_hh(Benth_hh_f, polarized = TRUE, discard_integration_at_border = FALSE)
-    Litt_scan  <- scan_hh(Litt_hh_f, polarized = TRUE, discard_integration_at_border = FALSE)
-    cat("Successfully scanned polarized haplotypes\n")
-  }, error = function(e) {
-    cat("ERROR in scan_hh with polarized = TRUE:\n")
-    cat(conditionMessage(e), "\n")
-    stop("Haplotype scanning failed.")
-  })
+  # Scan haplotypes to calculate iHH
+  Benth_scan <- scan_hh(Benth_hh_f, polarized = FALSE, discard_integration_at_border = FALSE)
+  Litt_scan  <- scan_hh(Litt_hh_f, polarized = FALSE, discard_integration_at_border = FALSE)
   
   # Clean up memory
   rm(Benth_hh, Litt_hh, Benth_hh_f, Litt_hh_f)
@@ -179,5 +168,5 @@ for(stat in stat_names) {
 final_output <- final_output[order(final_output[[merge_cols[1]]], final_output[[merge_cols[2]]]), ]
 
 # Write averaged results to the output directory
-output_file <- file.path(output_dir, paste0("HighSEQ_BENTHvsLITT_chr", chromosome, "_IHH_xpEHH_combined_downsampled_POLARIZED.tsv"))
+output_file <- file.path(output_dir, paste0("HighSEQ_BENTHvsLITT_chr", chromosome, "_IHH_xpEHH_combined_downsampled.tsv"))
 write.table(final_output, file = output_file, sep = "\t", quote = FALSE, row.names = FALSE)

@@ -6,7 +6,7 @@ This folder contains scripts used to generate the analyses and plots for the cor
 
 ## xpEHH Calculation
 
-### `Calc_bootstrap_polarised_xpEHH.R`
+### `Calc_bootstrap_xpEHH.R`
 Use this script **only when the two populations have unequal sample sizes**.
 
 - Iteratively runs the standard xpEHH analysis on the larger population  
