@@ -15,13 +15,6 @@ chromosome <- args[1]
 benth_file <- paste0("Masoko_chr", chromosome, "_benthic_AA.vcf.gz")
 litt_file <- paste0("Masoko_chr", chromosome, "_littoral_AA.vcf.gz")
 
-# Check if input files exist
-if (!file.exists(benth_file)) {
-  stop(paste("File not found:", benth_file, "\nDid you run the add_AA_tag.sh script first?"))
-}
-if (!file.exists(litt_file)) {
-  stop(paste("File not found:", litt_file, "\nDid you run the add_AA_tag.sh script first?"))
-}
 
 # Create output directory if it doesn't exist
 output_dir <- "Downsampled_xpEHH_IHS_POLARIZED"
@@ -136,7 +129,6 @@ for(boot_iter in 1:n_bootstrap) {
   gc()
 }
 
-cat("\n--- Combining bootstrap results ---\n")
 
 # Merge all bootstrap iterations by chr and position
 # Start with the first iteration

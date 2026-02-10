@@ -1,17 +1,18 @@
-(base) [sfy23@login-q-3 HIGH_SEQ_depth]$ cat tmem_rhoq_plot_xpEHH_IHS.R
 library(dplyr)
 library(rtracklayer)
 
 # ---------- Input Files ----------
-xpihs_file <- "HighSEQ_BENTHvsLITT_chr13_IHH_xpEHH_combined.tsv"
-taj_file   <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/genome_scans_ALL/BENTHIC_LITTORAL/OVERALL_TAJI_PI_DXY/OVERALL_Tajima_chr13.Tajima.D"
+xpihs_file <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/genome_scans_ALL/BENTHIC_LITTORAL/EHH_IHH_Selection/biallelics/HIGH_SEQ_depth/Downsampled_xpEHH_IHS_POLARIZED/HighSEQ_BENTHvsLITT_chr13_IHH_xpEHH_combined_downsampled_POLARIZED.tsv"
+taj_file   <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/genome_scans_ALL/BENTHIC_LITTORAL/OVERALL_TAJI_PI_DXY/OVERALL_Tajima_10K_chr23.Tajima.DY"
 gwas_file  <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/GWAS/masoko_HUE/output/Masoko_SUBSET_FILTERED_160_HUE_SL.assoc.txt"
+#gtf_file   <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/Bettina/data/Suhaib_expression_20250422/fAstCal1.2.111.gtf.gz" (used only for lncRNA annotation)
 gtf_file   <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/Bettina/data/Suhaib_expression_20250422/fAstCal1.2.111.gtf.gz"
+
 
 # ---------- Region of interest ----------
 chrom <- "chr13"
-start <- 4280000
-end   <- 4850000
+start <- 4350000
+end   <- 4750000
 
 # TWO HIGHLIGHT REGIONS
 highlight_start1 <- 4570415 - 10000
@@ -24,42 +25,32 @@ total_snps <- 1000000
 bonf <- -log10(0.05 / total_snps)
 suggestive <- -log10(1e-5)
 
+# ---------- xpEHH Thresholds ----------
+xpehh_upper_975 <- 1.965812
+xpehh_lower_25  <- -2.072641
+xpehh_upper_995 <- 2.743514
+xpehh_lower_05  <- -3.064567
+
 # ---------- Read and process data ----------
 xpihs_raw <- read.table(xpihs_file, header = TRUE)
 
-freq_bins <- seq(0.05, 0.95, by = 0.05)
-
-xpihs_raw$freq_bin_benth <- cut(xpihs_raw$freq_maj.benth,
-                                breaks = c(0, freq_bins, 1),
-                                labels = FALSE,
-                                include.lowest = TRUE)
-xpihs_raw <- xpihs_raw %>%
-  group_by(freq_bin_benth) %>%
-  mutate(unihs_std_benth = (unihs - mean(unihs, na.rm = TRUE)) / sd(unihs, na.rm = TRUE)) %>%
-  ungroup()
-
-xpihs_raw$freq_bin_litt <- cut(xpihs_raw$freq_maj.litt,
-                               breaks = c(0, freq_bins, 1),
-                               labels = FALSE,
-                               include.lowest = TRUE)
-xpihs_raw <- xpihs_raw %>%
-  group_by(freq_bin_litt) %>%
-  mutate(unihs_std_litt = (unihs_litt - mean(unihs_litt, na.rm = TRUE)) / sd(unihs_litt, na.rm = TRUE)) %>%
-  ungroup()
+# The downsampled polarized file has different column names
+# Extract relevant columns: position, xpehh_benth_litt, xpehh_benth_litt_sd, unihs, unihs_sd, unihs_litt, unihs_litt_sd
 
 xpihs <- xpihs_raw %>%
   transmute(CHR = gsub("^chr", "", chr),
             POSITION = position,
-            xpEHH = logpvalue,
-            unihs_benth = unihs_std_benth,
-            unihs_litt = unihs_std_litt) %>%
+            xpEHH = xpehh_benth_litt,
+            xpEHH_sd = xpehh_benth_litt_sd,
+            unihs_benth = unihs,
+            unihs_litt = unihs_litt) %>%
   filter(CHR == gsub("^chr", "", chrom),
          POSITION >= start, POSITION <= end)
 
 # Tajima's D
 taj <- read.table(taj_file, header = TRUE) %>%
   transmute(CHR = gsub("^chr", "", CHROM),
-            POSITION = BIN_START + 500,
+            POSITION = BIN_START + 5000,
             TajimaD = TajimaD) %>%
   filter(CHR == gsub("^chr", "", chrom),
          POSITION >= start, POSITION <= end)
@@ -114,7 +105,7 @@ add_highlight <- function() {
 }
 
 # ---------- Output PDF ----------
-pdf("tmem_rhoq_IHS_xpEHH_taji.pdf", width = 11, height = 15 + ann_height)
+pdf("StandardisedPanel_tmem_rhoq_IHS_xpEHH_taji.pdf", width = 11, height = 15 + ann_height)
 layout(matrix(c(1, 2, 3, 4, 5), ncol = 1),
        heights = c(3, 3, 3, 3, ann_height))
 
@@ -130,22 +121,38 @@ lines(xpihs$POSITION, xpihs$unihs_litt, col = "goldenrod2", lwd = 1.8)
 legend("topright", legend = c("Benthics", "Littorals"),
        col = c("steelblue2", "goldenrod2"), lwd = 1.8, bty = "n")
 
-# ---------- PANEL 2: xpEHH ----------
+# ---------- PANEL 2: xpEHH (FIXED Y-AXIS WITH SD) ----------
 par(mar = c(0.5, 5, 2.5, 2))
-ylims1 <- range(xpihs$xpEHH, na.rm = TRUE)
 plot(xpihs$POSITION, xpihs$xpEHH, type = "n",
-     xlab = "", ylab = "xpEHH (logpvalue)",
-     xlim = c(start, end), ylim = ylims1, xaxt = "n", las = 1, cex.lab=1)
+     xlab = "", ylab = "xpEHH",
+     xlim = c(start, end), ylim = c(-3.5, 3.5), xaxt = "n", las = 1, cex.lab=1)
 add_highlight()
+# Add threshold lines
+abline(h = 0, col = "gray50", lty = 2, lwd = 1)
+abline(h = xpehh_upper_975, col = "blue", lty = 2, lwd = 1.2)
+abline(h = xpehh_lower_25, col = "blue", lty = 2, lwd = 1.2)
+abline(h = xpehh_upper_995, col = "red", lty = 2, lwd = 1.2)
+abline(h = xpehh_lower_05, col = "red", lty = 2, lwd = 1.2)
+# Add SD shaded region (mean ± SD)
+xpihs_clean <- xpihs[!is.na(xpihs$xpEHH) & !is.na(xpihs$xpEHH_sd), ]
+if(nrow(xpihs_clean) > 0) {
+  polygon(c(xpihs_clean$POSITION, rev(xpihs_clean$POSITION)),
+          c(xpihs_clean$xpEHH - xpihs_clean$xpEHH_sd, 
+            rev(xpihs_clean$xpEHH + xpihs_clean$xpEHH_sd)),
+          col = rgb(0.5, 0.5, 0.5, 0.3), border = NA)
+}
+# Plot mean line
 lines(xpihs$POSITION, xpihs$xpEHH, col = "black", lwd = 1.8)
 
-# ---------- PANEL 3: Tajima's D ----------
+# ---------- PANEL 3: Tajima's D (FIXED Y-AXIS) ----------
 par(mar = c(0.5, 5, 2.5, 2))
-ylims2 <- range(taj$TajimaD, na.rm = TRUE)
 plot(taj$POSITION, taj$TajimaD, type = "n",
      xlab = "", ylab = "Tajima's D",
-     xlim = c(start, end), ylim = ylims2, xaxt = "n", las = 1, cex.lab=1)
+     xlim = c(start, end), ylim = c(-3.5, 3.5), xaxt = "n", las = 1, cex.lab=1)
 add_highlight()
+# Add horizontal line at 0
+abline(h = 0, col = "gray50", lty = 2, lwd = 1)
+# Plot data
 lines(taj$POSITION, taj$TajimaD, col = "black", lwd = 1.8)
 
 # ---------- PANEL 4: GWAS ----------
