@@ -14,6 +14,7 @@ This is the revised version of figure 2. Previous Figure 2 will be included with
 _Domain & Sex dataset_:
     data -
       ACAL_gene_counts_Extracted.csv
+      Domain_expression.csv
     scripts - 
       use _line_plot_domain_divergence.R_ to plot the line plots for genes of interest
       use _heatmap_domain_sex.R_ to plot heatmap for domain and sex at the time of trait initiation and divergence.
