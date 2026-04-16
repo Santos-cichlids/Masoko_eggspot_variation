@@ -1,5 +1,4 @@
 #!/bin/bash
-
 #! Name of the job:
 #SBATCH -J pi_snp
 #! Which project should be charged:
