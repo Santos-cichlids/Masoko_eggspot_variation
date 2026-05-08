@@ -1,4 +1,4 @@
-# Figure 2
+# Figure 3
 
 ## Pipeline Overview
 
