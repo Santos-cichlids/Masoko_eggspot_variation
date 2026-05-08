@@ -1,0 +1,18 @@
+#!/bin/bash 
+#SBATCH -J Remove_sites                      # Job name
+#SBATCH -A XXXXXXX              # Project account
+#SBATCH -p XXXXXXX                      # Partition (queue)
+#SBATCH --nodes=1                        # Allocate one node
+#SBATCH --cpus-per-task=1               # Allocate CPU cores for a single task
+#SBATCH --time=2:00:00                   # Walltime limit
+#SBATCH --mail-type=NONE                 # No email notifications
+
+# Load required modules
+. /etc/profile.d/modules.sh 
+module purge  
+module load rhel8/default-icl 
+module load bcftools/1.14/gcc/intel-oneapi-mkl/xrcih6dy  # Load the latest bcftools version
+
+
+echo "[$(date)] removing failed sites"
+bcftools view --threads 4 -T ^all_failed_sites_chr$1.txt ../filtered_PASS_noOMB_ALL_WILD.chr$1.vcf.gz -Oz -o Masoko_PASS_noOMB_ALL_WILD_mono_bi_GQ30_BENTH_LITT_MIDD.chr$1.vcf.gz

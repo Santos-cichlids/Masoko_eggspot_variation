@@ -1,6 +1,26 @@
-# Figure
+# Figure 5 main
 
 This folder contains scripts used to generate the analyses and plots for the corresponding figure in the manuscript.
+
+---
+
+#### removing sites that are missing in more that 30% samples
+- a loop can was run over all the chr files 
+for i in {1..20};
+ do sbatch 1_extract_failed_sites.job $i;
+done
+
+for i in {22..23};
+ do sbatch 1_extract_failed_sites.job $i;
+done
+- this gives you all the failed sites per population, then use a similar loop to remove those sites
+for i in {1..20};
+ do sbatch 2_removeFailedSites.job $i;
+done
+
+for i in {22..23};
+ do sbatch 2_removeFailedSites.job $i;
+done
 
 ---
 
@@ -30,7 +50,7 @@ Standalone script used to calculate statistical thresholds for downstream analys
 
 ## Diversity Statistics
 
-### `Calc_Pi_Tajima.bash`
+### `Calc_Tajima.bash`
 Wrapper script to run `Calc_Pi_Tajima.job` across all chromosome files in parallel.
 
 ---
@@ -46,5 +66,9 @@ Generates genome-wide plots combining:
 - GWAS results
 
 ---
+## Lake Malawi-wide phylogeny
+
+### Plot Allele frequencies
+
 
 

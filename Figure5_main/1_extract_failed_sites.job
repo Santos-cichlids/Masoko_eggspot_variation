@@ -1,0 +1,36 @@
+#!/bin/bash
+#SBATCH -J Filter_Samples
+#SBATCH -A XXXXXXXX
+#SBATCH -p icelake
+#SBATCH --nodes=1
+#SBATCH --ntasks=8
+#SBATCH --time=4:00:00
+#SBATCH --mail-type=NONE
+
+module purge
+module load rhel8/default-icl
+module load bcftools-1.9-gcc-5.4.0-b2hdt5n
+
+
+
+# Define input and output files
+PARENT_VCF="YOUR_VCF.chr$1.vcf.gz"
+BENTHIC_SAMPLES="list_benthic.list"
+LITTORAL_SAMPLES="list_littoral.list"
+MIDDLE_SAMPLES="list_middle_lit_ben.list"
+
+echo "[$(date)] Extracting sites that fail the missing data threshold for Benthic samples..."
+bcftools view -S "$BENTHIC_SAMPLES" "$PARENT_VCF" | bcftools view -i 'F_MISSING >= 0.3' | bcftools query -f '%CHROM\t%POS\n' > benthic_failed_sites_chr$1.txt
+
+echo "[$(date)] Extracting sites that fail the missing data threshold for Littoral samples..."
+bcftools view -S "$LITTORAL_SAMPLES" "$PARENT_VCF" | bcftools view -i 'F_MISSING >= 0.3' | bcftools query -f '%CHROM\t%POS\n' > littoral_failed_sites_chr$1.txt
+
+echo "[$(date)] Extracting sites that fail the missing data threshold for Middle samples..."
+bcftools view -S "$MIDDLE_SAMPLES" "$PARENT_VCF" | bcftools view -i 'F_MISSING >= 0.3' | bcftools query -f '%CHROM\t%POS\n' > middle_failed_sites_chr$1.txt
+
+echo "[$(date)] Extraction completed. Sites saved as TXT files."
+
+echo "[$(date)] Combining failed sites (union of sites, keeping unique positions)..."
+sort -m -u benthic_failed_sites_chr$1.txt littoral_failed_sites_chr$1.txt middle_failed_sites_chr$1.txt > all_failed_sites_chr$1.txt
+
+

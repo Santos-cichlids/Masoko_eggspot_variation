@@ -6,16 +6,16 @@ library(dplyr)
 
 # Input files
 GWAS <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/GWAS/masoko_GWAS_eggSpot_theis/Only_SL_as_Covar/output/Masoko_GWAS_with_covariates_SL_covar.assoc.txt"
-gtf_file <- "A_calliptera_fAstCal1.3.chr22.gtf"
-output <- "lncRNA_30k_annotated_miRNA"
+gtf_file <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/Bettina/data/Suhaib_expression_20250422/fAstCal1.2.111.gtf.gz"
+output <- "OCA2_"
 
 # Region of interest
-chrom <- "chr22"
-start <- 12590000
-end <- 12635000
+chrom <- "chr23"
+start <- 12149100
+end <- 12315000
 
 # Thresholds
-total_snps <- 1000000
+total_snps <- nrow(gemma_data)
 bonf <- -log10(0.05 / total_snps)
 suggestive <- -log10(1e-5)
  

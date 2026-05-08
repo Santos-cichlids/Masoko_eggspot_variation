@@ -5,7 +5,7 @@ library(rtracklayer)
 xpihs_file <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/genome_scans_ALL/BENTHIC_LITTORAL/EHH_IHH_Selection/biallelics/HIGH_SEQ_depth/Downsampled_xpEHH_IHS_POLARIZED/HighSEQ_BENTHvsLITT_chr13_IHH_xpEHH_combined_downsampled_POLARIZED.tsv"
 taj_file   <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/genome_scans_ALL/BENTHIC_LITTORAL/OVERALL_TAJI_PI_DXY/OVERALL_Tajima_10K_chr23.Tajima.DY"
 gwas_file  <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/GWAS/masoko_HUE/output/Masoko_SUBSET_FILTERED_160_HUE_SL.assoc.txt"
-#gtf_file   <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/Bettina/data/Suhaib_expression_20250422/fAstCal1.2.111.gtf.gz" (used only for lncRNA annotation)
+#gtf_file   <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/genome_scans_ALL/BENTHIC_LITTORAL/EHH_IHH_Selection/biallelics/HIGH_SEQ_depth/Astatotilapia_calliptera.fAstCal1.3.115.gtf.gz" (used only for lncRNA annotation)
 gtf_file   <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/Bettina/data/Suhaib_expression_20250422/fAstCal1.2.111.gtf.gz"
 
 
@@ -21,7 +21,7 @@ highlight_start2 <- 4549161 - 10000
 highlight_end2   <- 4549161 + 10000
 
 # ---------- Bonferroni thresholds ----------
-total_snps <- 1000000
+total_snps <- 1691704 #[from GWAS file]
 bonf <- -log10(0.05 / total_snps)
 suggestive <- -log10(1e-5)
 
@@ -160,7 +160,7 @@ par(mar = c(0.5, 5, 2.5, 2))
 plot(gwas_zoom$ps, gwas_zoom$neglogp, type = "n",
      xlab = "", ylab = expression(-log[10](p)),
      xlim = c(start, end),
-     ylim = range(c(gwas_zoom$neglogp, bonf)),
+     ylim = c(0, 9),,
      xaxt = "n", las = 1, cex.lab= 1.5)
 add_highlight()
 abline(h = bonf, col = "black", lty = 1)
