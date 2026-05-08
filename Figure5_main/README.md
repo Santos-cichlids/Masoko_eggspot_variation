@@ -65,10 +65,13 @@ Generates genome-wide plots combining:
 - Tajima’s D  
 - GWAS results
 
+## Get Allele frequency from VCF
+
+- use this pearl script `getAFpearl.pl`
 ---
 ## Lake Malawi-wide phylogeny
 
 ### Plot Allele frequencies
-
+- use `Plot_AFonTree.R`
 
 
