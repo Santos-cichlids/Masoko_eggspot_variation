@@ -97,15 +97,7 @@ Rscript lncRNA_Zoomplot.R
 #########################
 ---
 
-### D, E & K. Genotype-Phenotype Plots
-- Requires a GT file:
-```bash
-bash extract_GT.bash &
-```
-- Generate plots:
-```R
-Rscript GenoXPheno.R
-```
+
 
 
 

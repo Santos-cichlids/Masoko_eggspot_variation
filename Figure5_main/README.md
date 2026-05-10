@@ -74,4 +74,5 @@ Generates genome-wide plots combining:
 ### Plot Allele frequencies
 - use `Plot_AFonTree.R`
 
+### Supplementary Figure S11 & S12 were also generated using the same script.
 
