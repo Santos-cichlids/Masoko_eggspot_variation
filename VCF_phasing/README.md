@@ -1,0 +1,1 @@
+THis subdirectory contains all the scritps used to Phase the Masoko VCF
