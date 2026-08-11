@@ -668,30 +668,10 @@ write.csv(sex_mean_data,
 #==============================================================================
 # POLY-A gene dataset for Astatotilapia calliptera anal fin domain dataset
 #==================================HEATMAP=====================================#
-
-# Create heatmap for polyA genes
-make_heatmap <- function(counts_mat, title) {
-  pheatmap(counts_mat,
-           cluster_rows = TRUE,
-           cluster_cols = TRUE,
-           show_rownames = TRUE,
-           show_colnames = TRUE,
-           main = title)
-}
-
-# Generate heatmap for polyA genes
-polyA_counts <- df.z_ordered[gene_name_lookup$ensembl[gene_name_lookup$gene_biotype == "polyA"], ]
-make_heatmap(polyA_counts, "POLY-A Genes - Astatotilapia calliptera")
-
-#=============================================================================#
-#=============================================================================#
 # Load required packages
 library(DESeq2)
 library(tidyverse)
 library(pheatmap)
-
-# Create output directory
-dir.create("Hier_clust", showWarnings = FALSE)
 
 ###########################################################################
 ########################### HELPER FUNCTIONS ##############################
@@ -706,7 +686,7 @@ get_sig_genes <- function(dds, contrast) {
 ########################### ALL SAMPLES ###################################
 ###########################################################################
 
-domain_data         <- read.csv("../Domain_expression.csv", header = TRUE)
+domain_data         <- read.csv("Domain_expression.csv", header = TRUE)
 domain_counts_mat   <- domain_data %>% select(-ensembl) %>% as.matrix()
 rownames(domain_counts_mat) <- domain_data$ensembl
 domain_sample_names <- colnames(domain_counts_mat)
@@ -756,7 +736,7 @@ duplicate_rows <- duplicated(Domain_only_factor$ensembl)
 DESeq_results  <- Domain_only_factor[!duplicate_rows, ]
 cat("Significant DE genes (all samples):", nrow(DESeq_results), "\n")
 
-# Get normalised counts for sig genes - exactly like theirs (NOT rlog)
+# Get normalised counts for sig genes - DESeq2 median-of-ratios normalised counts (NOT rlog)
 df <- counts(dds_domain, normalized = TRUE)[DESeq_results$ensembl, ]
 
 # Z-score - exactly like theirs
@@ -783,22 +763,28 @@ ann_colors <- list(
   Sex    = c(F  = "lightyellow", M = "lightgreen")
 )
 
-#COLOUR FOR CONSISTENCY WITH other plots 
+#COLOUR FOR CONSISTENCY WITH other plots
 my_colors      <- colorRampPalette(c("#440154", "#35b779", "#fde725"))
-# Color palette - exactly like theirs
-#my_colors      <- colorRampPalette(c("#4596D8", "yellow", "orange"))
-color_gradient <- my_colors(100)  # their n_steps=1.5 is a bug, 100 gives proper gradient
+color_gradient <- my_colors(100)
 
 # gaps_col - calculate from data to avoid hardcoding
 gaps <- c(sum(domain_col_data$group == "AT"),
           sum(domain_col_data$group == "AT") + sum(domain_col_data$group == "M"))
 
-# Plot to screen - exactly like theirs with cutree_rows = 4
+# NOTE: cutree_rows / cutree(k=) now consistently set to 3 throughout,
+# matching the reported clustering (3 hierarchical clusters, complete
+# linkage, Euclidean distance).
+N_CLUSTERS <- 3
+
+# Close any stray open graphics devices before plotting, to avoid a blank
+# PDF caused by leftover device state from the interactive screen plot below.
+graphics.off()
+
+# Plot to screen
 Domain_heatmap <- pheatmap(df.z_ordered,
-                           #scale             = "row", # already scaled
                            cluster_rows      = TRUE,
                            cluster_cols      = FALSE,
-                           cutree_rows       = 3,
+                           cutree_rows       = N_CLUSTERS,
                            fontsize          = 12,
                            gaps_col          = gaps,
                            show_rownames     = FALSE,
@@ -808,13 +794,13 @@ Domain_heatmap <- pheatmap(df.z_ordered,
                            main              = "Domain DE Genes (All Samples)",
                            color             = color_gradient)
 
-# Save
-pdf("Hier_clust/pheatmap_domain_all.pdf", width = 12, height = 14)
+# Save - fresh device, explicit close before opening new one
+graphics.off()
+pdf("hier_clust/heatmap_domain_allsamples.pdf", width = 12, height = 14)
 pheatmap(df.z_ordered,
-         #scale             = "row",   #already scaled
          cluster_rows      = TRUE,
          cluster_cols      = FALSE,
-         cutree_rows       = 3,
+         cutree_rows       = N_CLUSTERS,
          fontsize          = 12,
          gaps_col          = gaps,
          show_rownames     = FALSE,
@@ -825,122 +811,127 @@ pheatmap(df.z_ordered,
          color             = color_gradient)
 dev.off()
 
-
-# Save cluster CSV - using hclust on same matrix as pheatmap
+# Save cluster CSV - using hclust on same matrix as pheatmap, k matches pheatmap's cutree_rows
 hc_all <- hclust(dist(df.z_ordered), method = "complete")
 cluster_csv_all <- data.frame(
   ensembl = rownames(df.z_ordered),
-  Cluster = cutree(hc_all, k = 4)
+  Cluster = cutree(hc_all, k = N_CLUSTERS)
 )
-write_csv(cluster_csv_all, "Hier_clust/domain_gene_clusters_all.csv")
+write_csv(cluster_csv_all, "hier_clust/domain_gene_clusters_allsamples.csv")
 
-###############################################################################################
-########################### DOMAIN EXPRESSION LINE PLOT #######################################
-###############################################################################################
-# Load required packages
-library(DESeq2)
-library(tidyverse)
-library(ggrepel)
+###########################################################################
+########################### MALES ONLY ####################################
+###########################################################################
 
-# Gene mapping - 
-gene_mapping <- data.frame(
-  ensembl = c("ENSACLG00000017026",
-              #"ENSACLG00000026836",   # aldh9a1a.a - excluded
-              #"ENSACLG00000026955",   # tmco1 - excluded
-              "ENSACLG00000024190",
-              #"ENSACLG00000025445",   # plxdc1 - excluded
-              "ENSACLG00000016986"),
-  gene_name = c("tmem254",
-                #"aldh9a1a.a",         # excluded
-                #"tmco1",              # excluded
-                "oca2",
-                #"plxdc1",             # excluded
-                "rhoq")
+male_samples      <- domain_col_data$sample[!grepl("^F", domain_col_data$sample)]
+domain_col_data_M <- domain_col_data[male_samples, ]
+domain_counts_M   <- domain_counts_mat[, male_samples]
+
+keep_M          <- rowSums(domain_counts_M) >= 10
+domain_counts_M <- domain_counts_M[keep_M, ]
+
+dds_domain_M <- DESeqDataSetFromMatrix(countData = domain_counts_M,
+                                       colData   = domain_col_data_M,
+                                       design    = ~ initial + group)
+dds_domain_M$group <- relevel(dds_domain_M$group, "AT")
+dds_domain_M <- DESeq(dds_domain_M)
+
+res_ATvM_M  <- as.data.frame(results(dds_domain_M, contrast = c("group", "M",  "AT"))) %>% rownames_to_column("ensembl")
+res_ATvPT_M <- as.data.frame(results(dds_domain_M, contrast = c("group", "PT", "AT"))) %>% rownames_to_column("ensembl")
+res_MvPT_M  <- as.data.frame(results(dds_domain_M, contrast = c("group", "M",  "PT"))) %>% rownames_to_column("ensembl")
+
+Domain_only_M <- rbind(res_ATvM_M, res_ATvPT_M, res_MvPT_M)
+Domain_only_M <- subset(Domain_only_M, padj < 0.05 & abs(log2FoldChange) > 1)
+DESeq_results_M <- Domain_only_M[!duplicated(Domain_only_M$ensembl), ]
+cat("Significant DE genes (males only):", nrow(DESeq_results_M), "\n")
+
+df_M <- counts(dds_domain_M, normalized = TRUE)[DESeq_results_M$ensembl, ]
+
+df.z_M <- t(apply(df_M, 1, scale))
+colnames(df.z_M) <- colnames(df_M)
+
+sample_order_M <- c(
+  rownames(domain_col_data_M)[domain_col_data_M$group == "AT"],
+  rownames(domain_col_data_M)[domain_col_data_M$group == "M"],
+  rownames(domain_col_data_M)[domain_col_data_M$group == "PT"]
 )
+df.z_M_ordered <- df.z_M[, sample_order_M]
 
-# Load and prepare domain data - keep ALL genes for proper normalization
-domain_data <- read.csv("../Domain_expression.csv", header = TRUE)  # Don't filter yet!
-domain_counts_mat <- domain_data %>% select(-ensembl) %>% as.matrix()
-rownames(domain_counts_mat) <- domain_data$ensembl
-domain_sample_names <- colnames(domain_counts_mat)
-domain_col_data <- data.frame(
-  sample = domain_sample_names,
-  group = case_when(
-    grepl("AT$", domain_sample_names) ~ "AT",
-    grepl("M$", domain_sample_names) ~ "M",
-    grepl("PT$", domain_sample_names) ~ "PT")
-) %>% filter(!is.na(group))
-rownames(domain_col_data) <- domain_col_data$sample
-domain_counts_mat <- domain_counts_mat[, domain_col_data$sample]
-domain_col_data$group <- factor(domain_col_data$group, levels = c("AT", "M", "PT"))
+col_ann_M <- data.frame(Domain = domain_col_data_M[sample_order_M, "group"])
+rownames(col_ann_M) <- sample_order_M
+ann_colors_M <- list(Domain = c(AT = "#45C4B0", M = "#9AEBA3", PT = "#13678A"))
 
-# DESeq2 analysis for domains - use FULL dataset for proper normalization
-dds_domain <- DESeqDataSetFromMatrix(countData = domain_counts_mat, colData = domain_col_data, design = ~ group)
-dds_domain <- DESeq(dds_domain)
-normalized_counts_domain <- counts(dds_domain, normalized = TRUE)
+gaps_M <- c(sum(domain_col_data_M$group == "AT"),
+            sum(domain_col_data_M$group == "AT") + sum(domain_col_data_M$group == "M"))
 
-# Now subset AFTER normalization
-domain_norm_data <- normalized_counts_domain %>%
-  as.data.frame() %>%
-  rownames_to_column("ensembl") %>%
-  filter(ensembl %in% gene_mapping$ensembl) %>%  # Subset here
-  pivot_longer(-ensembl, names_to = "sample", values_to = "normalized_count") %>%
-  left_join(domain_col_data, by = "sample") %>%
-  left_join(gene_mapping, by = "ensembl") %>%
-  mutate(log_norm_counts = log2(normalized_count + 1))
+graphics.off()
 
-# Calculate mean expression for domains
-domain_mean_data <- domain_norm_data %>%
-  group_by(gene_name, group) %>%
-  summarise(mean_log_counts = mean(log_norm_counts, na.rm = TRUE), .groups = "drop") %>%
-  mutate(group_num = as.numeric(group))
+# Plot to screen
+Domain_heatmap_M <- pheatmap(df.z_M_ordered,
+                             cluster_rows      = TRUE,
+                             cluster_cols      = FALSE,
+                             cutree_rows       = N_CLUSTERS,
+                             fontsize          = 12,
+                             gaps_col          = gaps_M,
+                             show_rownames     = FALSE,
+                             show_colnames     = FALSE,
+                             annotation_col    = col_ann_M,
+                             annotation_colors = ann_colors_M,
+                             main              = "Domain DE Genes (Males Only)",
+                             color             = color_gradient)
 
-# Get labels for the end points only
-domain_labels <- domain_mean_data %>%
-  group_by(gene_name) %>%
-  filter(group == "PT") %>%
-  ungroup()
-gene_colors <- c(
-  "tmem254" = "#1B9E77",
-  #"aldh9a1a.a" = "#D95F02",   # excluded
-  #"tmco1" = "#7570B3",        # excluded
-  "oca2" = "#E7298A",
-  #"plxdc1" = "#66A61E",       # excluded
-  "rhoq" = "#E6AB02"
+# Save
+graphics.off()
+pdf("hier_clust/heatmap_domain_malesonly.pdf", width = 10, height = 14)
+pheatmap(df.z_M_ordered,
+         cluster_rows      = TRUE,
+         cluster_cols      = FALSE,
+         cutree_rows       = N_CLUSTERS,
+         fontsize          = 12,
+         gaps_col          = gaps_M,
+         show_rownames     = FALSE,
+         show_colnames     = FALSE,
+         annotation_col    = col_ann_M,
+         annotation_colors = ann_colors_M,
+         main              = "Domain DE Genes (Males Only)",
+         color             = color_gradient)
+dev.off()
+
+hc_M <- hclust(dist(df.z_M_ordered), method = "complete")
+cluster_csv_M <- data.frame(
+  ensembl = rownames(df.z_M_ordered),
+  Cluster = cutree(hc_M, k = N_CLUSTERS)
 )
+write_csv(cluster_csv_M, "hier_clust/domain_gene_clusters_malesonly.csv")
 
-# Create domain plot
-domain_plot <- ggplot(domain_mean_data, aes(x = group, y = mean_log_counts, group = gene_name, color = gene_name)) +
-  geom_jitter(data = domain_norm_data,
-              aes(x = group, y = log_norm_counts, group = gene_name, color = gene_name),
-              width = 0.08, size = 3, alpha = 0.25, inherit.aes = FALSE) +
-  # Mean line and points on top
-  geom_line(size = 1.8) +                       
-  geom_point(size = 5.5) +                        
-  geom_text_repel(data = domain_labels,
-                  aes(label = gene_name),
-                  size = 5.5,                  
-                  nudge_x = 0.3,
-                  hjust = 0,
-                  direction = "y",
-                  segment.size = 0.4,
-                  segment.color = "grey50") +
-  scale_color_manual(values = gene_colors) +
-  labs(x = "Domain", y = "Mean (Log Normalized Counts)",
-       title = "Gene Expression Across Domains") +
-  theme_classic(base_size = 14) +
-  theme(
-    legend.position = "none",
-    axis.text = element_text(color = "black"),
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.title = element_text(face = "bold")
-  ) +
-  coord_cartesian(clip = "off") +
-  theme(plot.margin = margin(5, 50, 5, 5))
+##### other CSVs
+write_csv(DESeq_results,   "hier_clust/DESeq_sig_genes_allsamples.csv")
+write_csv(DESeq_results_M, "hier_clust/DESeq_sig_genes_malesonly.csv")
 
-# Save plots
-ggsave("domain_mean_expression_all_genes.pdf", plot = domain_plot, width = 10, height = 8, units = "in")
+###########################################################################
+########################### SUMMARY COUNTS #################################
+###########################################################################
 
-# Display plot
+# Per-contrast counts (all samples) - before rbind/dedup
+n_ATvM_all  <- sum(res_ATvM_df$padj  < 0.05 & abs(res_ATvM_df$log2FoldChange)  > 1, na.rm = TRUE)
+n_ATvPT_all <- sum(res_ATvPT_df$padj < 0.05 & abs(res_ATvPT_df$log2FoldChange) > 1, na.rm = TRUE)
+n_MvPT_all  <- sum(res_MvPT_df$padj  < 0.05 & abs(res_MvPT_df$log2FoldChange)  > 1, na.rm = TRUE)
 
-print(domain_plot)
+# Per-contrast counts (males only) - before rbind/dedup
+n_ATvM_M  <- sum(res_ATvM_M$padj  < 0.05 & abs(res_ATvM_M$log2FoldChange)  > 1, na.rm = TRUE)
+n_ATvPT_M <- sum(res_ATvPT_M$padj < 0.05 & abs(res_ATvPT_M$log2FoldChange) > 1, na.rm = TRUE)
+n_MvPT_M  <- sum(res_MvPT_M$padj  < 0.05 & abs(res_MvPT_M$log2FoldChange)  > 1, na.rm = TRUE)
+
+cat("\n=================== SUMMARY ===================\n")
+cat("--- All samples ---\n")
+cat("AT vs M  :", n_ATvM_all,  "\n")
+cat("AT vs PT :", n_ATvPT_all, "\n")
+cat("M vs PT  :", n_MvPT_all,  "\n")
+cat("Total unique DE genes (deduplicated):", nrow(DESeq_results), "\n\n")
+
+cat("--- Males only ---\n")
+cat("AT vs M  :", n_ATvM_M,  "\n")
+cat("AT vs PT :", n_ATvPT_M, "\n")
+cat("M vs PT  :", n_MvPT_M,  "\n")
+cat("Total unique DE genes (deduplicated):", nrow(DESeq_results_M), "\n")
+cat("================================================\n")
