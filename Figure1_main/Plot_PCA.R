@@ -1,6 +1,6 @@
 library(tidyverse)
-data<- read.table("../Masoko_GEMMA/Masoko_biallelic_pass_snps_mean6600_DP30_Q20_GQ30_MM10.GenProbsBin.covar", header=F)
-pheno<-read.csv("../Masoko_GEMMA/Masoko_dataset.csv", header=TRUE) %>% select(PCA_Group) %>% filter(PCA_Group!="")
+data<- read.table("Masoko_biallelic_pass_snps_mean6600_DP30_Q20_GQ30_MM10.GenProbsBin.covar", header=F)
+pheno<-read.csv("Masoko.csv", header=TRUE) %>% select(PCA_Group) %>% filter(PCA_Group!="")
 data <- cbind (pheno, data)
 
 # Example with prcomp()

@@ -5,7 +5,7 @@ library(rtracklayer)
 library(dplyr)
 
 # Input files
-GWAS <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/GWAS/masoko_GWAS_eggSpot_theis/Only_SL_as_Covar/output/Masoko_GWAS_with_covariates_SL_covar.assoc.txt"
+GWAS <- "Masoko_GWAS_with_covariates_SL_covar.assoc.txt"
 gtf_file <- "A_calliptera_fAstCal1.3.chr22.gtf"
 output <- "lncRNA_30k_annotated_miRNA"
 
@@ -14,8 +14,8 @@ chrom <- "chr22"
 start <- 12590000
 end <- 12635000
 
-# Thresholds
-total_snps <- nrow(gemma_data)
+# ---------- Bonferroni thresholds ----------
+total_snps <- 1691704 #[from GWAS file]
 bonf <- -log10(0.05 / total_snps)
 suggestive <- -log10(1e-5)
  

@@ -1,6 +1,6 @@
 # Load required library
-library(qqman, lib.loc="~/rds/rds-durbin-group-8b3VcZwY7rY/projects/cichlid/suhaib/mbuna_vcf/vcf_attempt3/vcf-filtering_245_males/GWAS/R_lib/")
-input_path <- "./output/Masoko_GWAS_with_covariates_BlackL_SL_covar.assoc.txt"
+library(qqman)
+input_path <- "NAME_assoc.txt"
 
 # Read input file
 gemma_data <- read.table(input_path, header = TRUE)
@@ -10,14 +10,10 @@ gemma_data$chr <- as.numeric(gemma_data$chr)
 gemma_data$ps <- as.numeric(gemma_data$ps)
 gemma_data$p_score <- as.numeric(gemma_data$p_score)
 
-# Calculate study-specific Bonferroni threshold
-n_snps <- nrow(gemma_data)
-bonferroni_threshold <- 0.05 / n_snps
-suggestive_threshold <- 0.5 / n_snps  # one order of magnitude more lenient
-
-cat("Number of SNPs tested:", n_snps, "\n")
-cat("Bonferroni threshold:", bonferroni_threshold, "\n")
-cat("Bonferroni threshold (-log10):", -log10(bonferroni_threshold), "\n")
+# ---------- Bonferroni thresholds ----------
+total_snps <- 1691704 #[from GWAS file]
+bonf <- -log10(0.05 / total_snps)
+suggestive <- -log10(1e-5)
 
 # Function to create Manhattan plot
 plot_manhattan <- function(data, p_col, output_name) {

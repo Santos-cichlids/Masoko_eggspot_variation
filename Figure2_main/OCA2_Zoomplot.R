@@ -5,8 +5,8 @@ library(rtracklayer)
 library(dplyr)
 
 # Input files
-GWAS <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/suhaib/masoko/GWAS/masoko_GWAS_eggSpot_theis/Only_SL_as_Covar/output/Masoko_GWAS_with_covariates_SL_covar.assoc.txt"
-gtf_file <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/Bettina/data/Suhaib_expression_20250422/fAstCal1.2.111.gtf.gz"
+GWAS <- "Masoko_GWAS_with_covariates_SL_covar.assoc.txt"
+gtf_file <- "fAstCal1.2.111.gtf.gz"
 output <- "OCA2_"
 
 # Region of interest
