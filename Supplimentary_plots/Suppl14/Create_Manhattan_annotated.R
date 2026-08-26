@@ -17,14 +17,14 @@ chr_levels <- paste0("chr", c(1:20, 22, 23))
 ## one entry per population: label used in facet titles + filename glob pattern
 ## order here also sets the top-to-bottom facet order
 pops <- list(
-  OVERALL  = "Overall_10KB_HighSD.*\\.Tajima\\.D$",
-  LITTORAL = "Littoral_10KB_HighSD.*\\.Tajima\\.D$",   # lowercase 'kb'
-  MIDDLE   = "Middle_10KB_HighSD.*\\.Tajima\\.D$",
-  BENTHIC  = "Benth_10KB_HighSD.*\\.Tajima\\.D$"
+  OVERALL  = "10KB_WINDOW/Overall_10KB_HighSD.*\\.Tajima\\.D$",
+  LITTORAL = "10KB_WINDOW/Littoral_10KB_HighSD.*\\.Tajima\\.D$",   # lowercase 'kb'
+  MIDDLE   = "10KB_WINDOW/Middle_10KB_HighSD.*\\.Tajima\\.D$",
+  BENTHIC  = "10KB_WINDOW/Benth_10KB_HighSD.*\\.Tajima\\.D$"
 )
 
 ## GTF, used only to look up the three genes of interest below
-gtf_file <- "/rds/project/rds-8b3VcZwY7rY/projects/cichlid/Bettina/data/Suhaib_expression_20250422/fAstCal1.2.111.gtf.gz"
+gtf_file <- "fAstCal1.2.111.gtf.gz"
 
 genes_of_interest <- data.table(
   gene_id   = c("ENSACLG00000024190", "ENSACLG00000029630", "ENSACLG00000017026"),

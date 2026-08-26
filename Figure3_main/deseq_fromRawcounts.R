@@ -922,16 +922,294 @@ n_ATvM_M  <- sum(res_ATvM_M$padj  < 0.05 & abs(res_ATvM_M$log2FoldChange)  > 1, 
 n_ATvPT_M <- sum(res_ATvPT_M$padj < 0.05 & abs(res_ATvPT_M$log2FoldChange) > 1, na.rm = TRUE)
 n_MvPT_M  <- sum(res_MvPT_M$padj  < 0.05 & abs(res_MvPT_M$log2FoldChange)  > 1, na.rm = TRUE)
 
-cat("\n=================== SUMMARY ===================\n")
-cat("--- All samples ---\n")
-cat("AT vs M  :", n_ATvM_all,  "\n")
-cat("AT vs PT :", n_ATvPT_all, "\n")
-cat("M vs PT  :", n_MvPT_all,  "\n")
-cat("Total unique DE genes (deduplicated):", nrow(DESeq_results), "\n\n")
+###########################################################################
+########################### Line Plots dOMAIN #################################
+###########################################################################
 
-cat("--- Males only ---\n")
-cat("AT vs M  :", n_ATvM_M,  "\n")
-cat("AT vs PT :", n_ATvPT_M, "\n")
-cat("M vs PT  :", n_MvPT_M,  "\n")
-cat("Total unique DE genes (deduplicated):", nrow(DESeq_results_M), "\n")
-cat("================================================\n")
+# Load required packages
+library(DESeq2)
+library(tidyverse)
+library(ggrepel)
+
+# Gene mapping - Set 1
+# CHANGE 1: Only keeping tmem254, oca2, rhoq (others commented out)
+gene_mapping <- data.frame(
+  ensembl = c("ENSACLG00000017026",
+              #"ENSACLG00000026836",   # aldh9a1a.a - excluded
+              #"ENSACLG00000026955",   # tmco1 - excluded
+              "ENSACLG00000024190",
+              #"ENSACLG00000025445",   # plxdc1 - excluded
+              "ENSACLG00000016986"),
+  gene_name = c("tmem254",
+                #"aldh9a1a.a",         # excluded
+                #"tmco1",              # excluded
+                "oca2",
+                #"plxdc1",             # excluded
+                "rhoq")
+)
+
+# Load and prepare sex data - keep ALL genes for proper normalization
+count_data <- read.csv("../ACAL_gene_counts_Extracted.csv", header = TRUE)
+counts_mat <- count_data %>% select(-ensembl) %>% as.matrix()
+rownames(counts_mat) <- count_data$ensembl
+sample_names <- colnames(counts_mat)
+col_data <- data.frame(sample = sample_names, group = ifelse(grepl("^F", sample_names), "F", "M")) %>%
+  filter(group %in% c("F", "M"))
+rownames(col_data) <- col_data$sample
+counts_mat <- counts_mat[, col_data$sample]
+col_data$group <- factor(col_data$group, levels = c("F", "M"))
+
+# DESeq2 analysis for sex - use FULL dataset for proper normalization
+# NOTE: design fixed to ~ group only. "sample" was one level per row (just an ID),
+# fully confounded with group, which made the model matrix not full rank.
+dds_sex <- DESeqDataSetFromMatrix(countData = counts_mat, colData = col_data, design = ~ group)
+dds_sex <- DESeq(dds_sex)
+normalized_counts_sex <- counts(dds_sex, normalized = TRUE)
+
+# Now subset AFTER normalization
+sex_norm_data <- normalized_counts_sex %>%
+  as.data.frame() %>%
+  rownames_to_column("ensembl") %>%
+  filter(ensembl %in% gene_mapping$ensembl) %>%  # Subset here
+  pivot_longer(-ensembl, names_to = "sample", values_to = "normalized_count") %>%
+  left_join(col_data, by = "sample") %>%
+  left_join(gene_mapping, by = "ensembl") %>%
+  mutate(log_norm_counts = log2(normalized_count + 1))
+
+# Calculate mean expression for sex
+sex_mean_data <- sex_norm_data %>%
+  group_by(gene_name, group) %>%
+  summarise(mean_log_counts = mean(log_norm_counts, na.rm = TRUE), .groups = "drop") %>%
+  mutate(group_num = as.numeric(group))
+
+# Get labels for the end points only
+sex_labels <- sex_mean_data %>%
+  group_by(gene_name) %>%
+  filter(group == "M") %>%
+  ungroup()
+
+# CHANGE 1 (colours): Only 3 genes retained; others commented out
+gene_colors <- c(
+  "tmem254" = "#1B9E77",
+  #"aldh9a1a.a" = "#D95F02",   # excluded
+  #"tmco1" = "#7570B3",        # excluded
+  "oca2" = "#E7298A",
+  #"plxdc1" = "#66A61E",       # excluded
+  "rhoq" = "#E6AB02"
+)
+
+# Create sex plot
+# CHANGE 2: Increased line size, point size, and label text size
+# CHANGE 3: Added geom_jitter layer (individual points, same colour, translucent) BEFORE mean line/points
+sex_plot <- ggplot(sex_mean_data, aes(x = group, y = mean_log_counts, group = gene_name, color = gene_name)) +
+  # CHANGE 3: Individual jittered points from raw normalised data (alpha for translucency)
+  geom_jitter(data = sex_norm_data,
+              aes(x = group, y = log_norm_counts, group = gene_name, color = gene_name),
+              width = 0.08, size = 3, alpha = 0.25, inherit.aes = FALSE) +
+  # Mean line and points on top
+  geom_line(size = 1.8) +                        
+  geom_point(size = 5.5) +                        
+  geom_text_repel(data = sex_labels,
+                  aes(label = gene_name),
+                  size = 5.5,                     
+                  nudge_x = 0.3,
+                  hjust = 0,
+                  direction = "y",
+                  segment.size = 0.4,
+                  segment.color = "grey50") +
+  scale_color_manual(values = gene_colors) +
+  labs(x = "Sex", y = "Mean Log2 Normalized Counts",
+       title = "Gene Expression Across Sex") +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "none",
+    axis.text = element_text(color = "black"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title = element_text(face = "bold")
+  ) +
+  coord_cartesian(clip = "off") +
+  theme(plot.margin = margin(5, 50, 5, 5))
+
+# Load and prepare domain data - keep ALL genes for proper normalization
+domain_data <- read.csv("../Domain_expression.csv", header = TRUE)  # Don't filter yet!
+domain_counts_mat <- domain_data %>% select(-ensembl) %>% as.matrix()
+rownames(domain_counts_mat) <- domain_data$ensembl
+domain_sample_names <- colnames(domain_counts_mat)
+domain_col_data <- data.frame(
+  sample = domain_sample_names,
+  group = case_when(
+    grepl("AT$", domain_sample_names) ~ "AT",
+    grepl("M$", domain_sample_names) ~ "M",
+    grepl("PT$", domain_sample_names) ~ "PT")
+) %>% filter(!is.na(group))
+rownames(domain_col_data) <- domain_col_data$sample
+domain_counts_mat <- domain_counts_mat[, domain_col_data$sample]
+domain_col_data$group <- factor(domain_col_data$group, levels = c("AT", "M", "PT"))
+
+# DESeq2 analysis for domains - use FULL dataset for proper normalization
+dds_domain <- DESeqDataSetFromMatrix(countData = domain_counts_mat, colData = domain_col_data, design = ~ group)
+dds_domain <- DESeq(dds_domain)
+normalized_counts_domain <- counts(dds_domain, normalized = TRUE)
+
+# Now subset AFTER normalization
+domain_norm_data <- normalized_counts_domain %>%
+  as.data.frame() %>%
+  rownames_to_column("ensembl") %>%
+  filter(ensembl %in% gene_mapping$ensembl) %>%  # Subset here
+  pivot_longer(-ensembl, names_to = "sample", values_to = "normalized_count") %>%
+  left_join(domain_col_data, by = "sample") %>%
+  left_join(gene_mapping, by = "ensembl") %>%
+  mutate(log_norm_counts = log2(normalized_count + 1))
+
+# Calculate mean expression for domains
+domain_mean_data <- domain_norm_data %>%
+  group_by(gene_name, group) %>%
+  summarise(mean_log_counts = mean(log_norm_counts, na.rm = TRUE), .groups = "drop") %>%
+  mutate(group_num = as.numeric(group))
+
+# Get labels for the end points only
+domain_labels <- domain_mean_data %>%
+  group_by(gene_name) %>%
+  filter(group == "PT") %>%
+  ungroup()
+
+# Create domain plot
+# CHANGE 2: Increased line size, point size, and label text size
+# CHANGE 3: Added geom_jitter layer (individual points, same colour, translucent) BEFORE mean line/points
+domain_plot <- ggplot(domain_mean_data, aes(x = group, y = mean_log_counts, group = gene_name, color = gene_name)) +
+  # CHANGE 3: Individual jittered points from raw normalised data (alpha for translucency)
+  geom_jitter(data = domain_norm_data,
+              aes(x = group, y = log_norm_counts, group = gene_name, color = gene_name),
+              width = 0.08, size = 3, alpha = 0.25, inherit.aes = FALSE) +
+  # Mean line and points on top
+  geom_line(size = 1.8) +                        
+  geom_point(size = 5.5) +                      
+  geom_text_repel(data = domain_labels,
+                  aes(label = gene_name),
+                  size = 5.5,                     
+                  nudge_x = 0.3,
+                  hjust = 0,
+                  direction = "y",
+                  segment.size = 0.4,
+                  segment.color = "grey50") +
+  scale_color_manual(values = gene_colors) +
+  labs(x = "Domain", y = "Mean (Log Normalized Counts)",
+       title = "Gene Expression Across Domains") +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "none",
+    axis.text = element_text(color = "black"),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    axis.title = element_text(face = "bold")
+  ) +
+  coord_cartesian(clip = "off") +
+  theme(plot.margin = margin(5, 50, 5, 5))
+
+# Save plots
+ggsave("sex_mean_expression_all_genes.pdf", plot = sex_plot, width = 8, height = 6, units = "in")
+ggsave("domain_mean_expression_all_genes.pdf", plot = domain_plot, width = 10, height = 8, units = "in")
+
+# Display plots
+print(sex_plot)
+print(domain_plot)
+
+
+################FOR MALES ONLY
+# ── MALE-ONLY DOMAIN EXPRESSION PLOT ─────────────────────────────────────────
+
+# Filter to male samples only (columns starting with "M", excluding "ensembl")
+male_sample_names <- domain_sample_names[grepl("^M", domain_sample_names)]
+
+male_counts_mat <- domain_counts_mat[, male_sample_names]
+
+male_col_data <- data.frame(
+  sample = male_sample_names,
+  group = case_when(
+    grepl("AT$", male_sample_names) ~ "AT",
+    grepl("M$",  male_sample_names) ~ "M",
+    grepl("PT$", male_sample_names) ~ "PT")
+) %>% filter(!is.na(group))
+rownames(male_col_data) <- male_col_data$sample
+male_counts_mat <- male_counts_mat[, male_col_data$sample]
+male_col_data$group <- factor(male_col_data$group, levels = c("AT", "M", "PT"))
+
+# DESeq2 normalization on male samples only
+dds_male <- DESeqDataSetFromMatrix(countData = male_counts_mat,
+                                   colData   = male_col_data,
+                                   design    = ~ group)
+dds_male <- DESeq(dds_male)
+normalized_counts_male <- counts(dds_male, normalized = TRUE)
+
+# Subset to genes of interest AFTER normalization
+male_norm_data <- normalized_counts_male %>%
+  as.data.frame() %>%
+  rownames_to_column("ensembl") %>%
+  filter(ensembl %in% gene_mapping$ensembl) %>%
+  pivot_longer(-ensembl, names_to = "sample", values_to = "normalized_count") %>%
+  left_join(male_col_data, by = "sample") %>%
+  left_join(gene_mapping, by = "ensembl") %>%
+  mutate(log_norm_counts = log2(normalized_count + 1))
+
+# Mean expression per gene per domain
+male_mean_data <- male_norm_data %>%
+  group_by(gene_name, group) %>%
+  summarise(mean_log_counts = mean(log_norm_counts, na.rm = TRUE), .groups = "drop") %>%
+  mutate(group_num = as.numeric(group))
+
+# Labels at PT end point
+male_domain_labels <- male_mean_data %>%
+  group_by(gene_name) %>%
+  filter(group == "PT") %>%
+  ungroup()
+
+# Plot
+male_domain_plot <- ggplot(male_mean_data,
+                           aes(x = group, y = mean_log_counts,
+                               group = gene_name, color = gene_name)) +
+  geom_jitter(data    = male_norm_data,
+              aes(x = group, y = log_norm_counts,
+                  group = gene_name, color = gene_name),
+              width = 0.08, size = 3, alpha = 0.25, inherit.aes = FALSE) +
+  geom_line(size  = 1.8) +
+  geom_point(size = 5.5) +
+  geom_text_repel(data         = male_domain_labels,
+                  aes(label    = gene_name),
+                  size         = 5.5,
+                  nudge_x      = 0.3,
+                  hjust        = 0,
+                  direction    = "y",
+                  segment.size = 0.4,
+                  segment.color = "grey50") +
+  scale_color_manual(values = gene_colors) +
+  labs(x     = "Domain",
+       y     = "Mean (Log Normalized Counts)",
+       title = "Gene Expression Across Domains (Males Only)") +
+  theme_classic(base_size = 14) +
+  theme(
+    legend.position = "none",
+    axis.text       = element_text(color = "black"),
+    plot.title      = element_text(face = "bold", hjust = 0.5),
+    axis.title      = element_text(face = "bold")
+  ) +
+  coord_cartesian(clip = "off") +
+  theme(plot.margin = margin(5, 50, 5, 5))
+
+# Save and display
+ggsave("male_domain_mean_expression.pdf", plot = male_domain_plot,
+       width = 10, height = 8, units = "in")
+print(male_domain_plot)
+
+###########################################################################
+########################### SEX DE GENES ###################################
+###########################################################################
+# Uses dds_sex, which was already fit above with design = ~ group
+
+dir.create("line_plots", showWarnings = FALSE)
+
+res_sex    <- results(dds_sex, contrast = c("group", "M", "F"), alpha = 0.05)
+res_sex_df <- as.data.frame(res_sex) %>% rownames_to_column("ensembl")
+
+DESeq_results_sex <- subset(res_sex_df, padj < 0.05 & abs(log2FoldChange) > 1)
+
+write_csv(DESeq_results_sex, "line_plots/DESeq_sig_genes_sex.csv")
+
